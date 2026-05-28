@@ -261,29 +261,27 @@ tfoot td.cpl, tfoot td.cac, tfoot td.num { text-align: right; color: #fff; }
 }
 .bairro-row.total-row strong { color: var(--black); }
 
-/* ── Horizontal bar chart ── */
-.hbar-list { display: flex; flex-direction: column; gap: 8px; }
-.hbar-row { display: flex; align-items: center; gap: 10px; }
-.hbar-track {
-  flex: 1; height: 32px; background: var(--lgray);
-  border-radius: 4px; overflow: hidden; position: relative;
+/* ── Funnel chart ── */
+.funnel-wrap { display: flex; flex-direction: column; gap: 3px; padding: 4px 0; }
+.funnel-row { display: flex; justify-content: center; }
+.funnel-bar {
+  height: 38px; border-radius: 4px;
+  display: flex; align-items: center; justify-content: center;
+  transition: width .7s ease; min-width: 80px;
+  position: relative; overflow: hidden;
 }
-.hbar-fill {
-  height: 100%; border-radius: 4px;
-  display: flex; align-items: center;
-  transition: width .6s ease;
-  min-width: 4px;
-  position: relative;
-}
-.hbar-label-inside {
-  position: absolute; left: 10px;
-  font-size: 12px; font-weight: 700; color: #fff;
-  white-space: nowrap; pointer-events: none;
-}
-.hbar-label-outside {
-  position: absolute; left: calc(100% + 8px);
-  font-size: 12px; font-weight: 700; white-space: nowrap;
+.funnel-bar-label {
+  font-size: 12px; font-weight: 700;
+  white-space: nowrap; padding: 0 14px;
   pointer-events: none;
+}
+.funnel-connector {
+  display: flex; justify-content: center; height: 8px;
+  color: #ccc; font-size: 10px; line-height: 8px;
+  letter-spacing: 2px;
+}
+.funnel-row-leads .funnel-bar {
+  border-radius: 6px;
 }
 
 @media (max-width: 900px) {
@@ -343,12 +341,8 @@ tfoot td.cpl, tfoot td.cac, tfoot td.num { text-align: right; color: #fff; }
     <div class="charts-row">
       <div class="chart-card full">
         <h3>Distribuição por status</h3>
-        <div class="status-split">
-          <div id="status-detail" class="status-table-wrap" style="width:260px;flex-shrink:0;max-height:300px;overflow-y:auto;"></div>
-          <div style="flex:1; padding-top:2px;">
-            <div id="status-hbars" class="hbar-list"></div>
-          </div>
-        </div>
+        <div id="status-funnel" class="funnel-wrap"></div>
+        <div id="status-detail" class="status-table-wrap" style="margin-top:16px;max-height:160px;overflow-y:auto;border-top:1px solid var(--border);padding-top:10px;"></div>
       </div>
     </div>
     <div class="charts-row">
@@ -832,24 +826,48 @@ function buildResumo(summary, dayData) {
   const grpValues = [vendas, semCob, semResp, semInt, emAberto, outros];
   const grpColors = ['#000000','#FCBC06','#6B6B6B','#aaaaaa','#333333','#d4d4d4'];
 
-  /* Horizontal bar chart por grupo */
+  /* Funil SVG com trapézios */
   destroyChart('status');
-  const hbarsEl = document.getElementById('status-hbars');
-  hbarsEl.innerHTML = grpLabels.map((lbl, i) => {
-    if (!grpValues[i]) return '';
-    const p = pct(grpValues[i], total);
-    const pStr = p.toFixed(1) + '%';
-    const inside = p >= 18;
-    const txtColor = grpColors[i] === '#FCBC06' ? '#000' : '#fff';
-    return `<div class="hbar-row">
-      <div class="hbar-track">
-        <div class="hbar-fill" style="width:${p}%;background:${grpColors[i]};">
-          ${inside ? `<span class="hbar-label-inside" style="color:${txtColor}">${lbl} &nbsp; ${pStr}</span>` : ''}
-        </div>
-        ${!inside ? `<span class="hbar-label-outside" style="color:${grpColors[i]}">${lbl} &nbsp; ${pStr}</span>` : ''}
-      </div>
-    </div>`;
+
+  const grpData   = grpLabels.map((l, i) => ({ label: l, value: grpValues[i], color: grpColors[i] }))
+                             .filter(g => g.value > 0);
+  const vendasGrp = grpData.find(g => g.label === 'Vendas');
+  const middle    = grpData.filter(g => g.label !== 'Vendas').sort((a,b) => b.value - a.value);
+  const ordered   = [{ label:'Total de leads', value: total, color:'#111111' }, ...middle];
+  if (vendasGrp) ordered.push(vendasGrp);
+
+  const funnelEl = document.getElementById('status-funnel');
+  const SVG_W = 560, SH = 54, GAP = 3;
+  const n = ordered.length;
+  const minW = SVG_W * 0.18;
+
+  // Largura em cada transição: w[0]=topo (100%), w[n]=fundo (18%)
+  const w = Array.from({length: n+1}, (_, i) => SVG_W - i * (SVG_W - minW) / n);
+  const totalH = n * SH + (n-1) * GAP;
+
+  const shapes = ordered.map((g, i) => {
+    const tw = w[i], bw = w[i+1];
+    const y  = i * (SH + GAP);
+    const tlx = (SVG_W - tw) / 2, trx = (SVG_W + tw) / 2;
+    const blx = (SVG_W - bw) / 2, brx = (SVG_W + bw) / 2;
+    const isTotal = i === 0;
+    const p = isTotal ? 100 : pct(g.value, total);
+    const count = isTotal ? total : g.value;
+    const txtCol = g.color === '#FCBC06' ? '#000000' : '#ffffff';
+    const label = `${g.label}  ·  ${count}  ·  ${p.toFixed(1)}%`;
+    return `
+      <polygon points="${tlx},${y} ${trx},${y} ${brx},${y+SH} ${blx},${y+SH}" fill="${g.color}"/>
+      <text x="${SVG_W/2}" y="${y + SH/2 + 1}"
+            text-anchor="middle" dominant-baseline="middle"
+            font-family="DM Sans,sans-serif" font-size="12.5" font-weight="700" fill="${txtCol}">
+        ${label}
+      </text>`;
   }).join('');
+
+  funnelEl.innerHTML = `<svg viewBox="0 0 ${SVG_W} ${totalH}" width="100%"
+    preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">
+    ${shapes}
+  </svg>`;
 
   /* Tabela compacta de status individuais */
   const sortedStatuses = Object.entries(statusCounts).sort((a,b) => b[1] - a[1]);
