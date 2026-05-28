@@ -341,8 +341,10 @@ tfoot td.cpl, tfoot td.cac, tfoot td.num { text-align: right; color: #fff; }
     <div class="charts-row">
       <div class="chart-card full">
         <h3>Distribuição por status</h3>
-        <div style="display:flex;gap:24px;align-items:flex-start;">
-          <div id="status-detail" class="status-table-wrap" style="width:220px;min-width:220px;flex-shrink:0;max-height:340px;overflow-y:auto;"></div>
+        <div style="display:flex;gap:20px;align-items:flex-start;">
+          <div style="flex:1;min-width:0;overflow:auto;max-height:340px;">
+            <div id="status-detail" class="status-table-wrap" style="overflow-y:auto;max-height:340px;"></div>
+          </div>
           <div style="flex:1;min-width:0;"><div id="status-funnel"></div></div>
         </div>
       </div>
