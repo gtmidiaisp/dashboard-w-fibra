@@ -197,6 +197,7 @@ tbody td.dow    { color: var(--muted); font-size: 11px; }
 tfoot td {
   padding: 10px 13px; font-weight: 700; font-size: 13px;
   background: var(--black); color: #fff; white-space: nowrap;
+  position: sticky; bottom: 0; z-index: 3;
 }
 tfoot td.invest { text-align: right; color: var(--yellow); }
 tfoot td.cpl, tfoot td.cac, tfoot td.num { text-align: right; color: #fff; }
@@ -312,7 +313,7 @@ tfoot td.cpl, tfoot td.cac, tfoot td.num { text-align: right; color: #fff; }
     <button class="period-pill" data-period="hoje"   onclick="setPeriod('hoje')">Hoje</button>
     <button class="period-pill" data-period="ontem"  onclick="setPeriod('ontem')">Ontem</button>
     <button class="period-pill" data-period="7d"     onclick="setPeriod('7d')">Últimos 7 dias</button>
-    <button class="period-pill active" data-period="30d" onclick="setPeriod('30d')">Últimos 30 dias</button>
+    <button class="period-pill active" data-period="month" onclick="setPeriod('month')">Este mês</button>
     <button class="period-pill" data-period="custom" onclick="setPeriod('custom')">Personalizado</button>
   </div>
   <div class="custom-range" id="custom-range" style="display:none;">
@@ -432,7 +433,7 @@ function normStr(s) {
 }
 
 let allLeads = [], allGastos = [];
-let currentPeriod = '30d';
+let currentPeriod = 'month';
 let customFrom = null, customTo = null;
 let charts = {};
 
@@ -607,6 +608,10 @@ function getDateRange() {
   }
   if (currentPeriod === '30d') {
     const f = new Date(today); f.setDate(f.getDate() - 29);
+    return { from: f, to: today };
+  }
+  if (currentPeriod === 'month') {
+    const f = new Date(today.getFullYear(), today.getMonth(), 1);
     return { from: f, to: today };
   }
   if (currentPeriod === 'custom' && customFrom && customTo) {
