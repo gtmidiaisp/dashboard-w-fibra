@@ -378,11 +378,9 @@ tfoot td.invest, tfoot td.cpl, tfoot td.cac, tfoot td.num { text-align: right; c
       <table>
         <thead>
           <tr>
-            <th>Campanha</th>
+            <th>Camp.</th>
             <th class="num invest">Investimento</th>
-            <th class="num">Leads planilha</th>
-            <th class="num">Conversas gerenciador</th>
-            <th class="num">Diferença</th>
+            <th class="num">Leads</th>
             <th class="num cpl">CPL</th>
             <th class="num cac">CPV</th>
           </tr>
@@ -956,18 +954,15 @@ function buildCampanha(campData, cityData) {
   let tL=0, tV=0, tInv=0, tConv=0;
 
   for (const c of campData) {
-    const { nome, leads, vendas, investimento, conversas } = c;
-    tL += leads; tV += vendas; tInv += investimento; tConv += conversas;
-    const cpl  = investimento > 0 && leads  > 0 ? investimento / leads  : null;
-    const cpv  = investimento > 0 && vendas > 0 ? investimento / vendas : null;
-    const dif  = conversas - leads;
+    const { leads, vendas, investimento } = c;
+    tL += leads; tV += vendas; tInv += investimento;
+    const cpl = investimento > 0 && leads  > 0 ? investimento / leads  : null;
+    const cpv = investimento > 0 && vendas > 0 ? investimento / vendas : null;
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td>${nome || `Campanha ${c.num}`}</td>
+      <td style="font-weight:700;color:var(--teal);">[${String(c.num).padStart(2,'0')}]</td>
       <td class="invest">${investimento > 0 ? fmtBRL(investimento) : '<span class="dash">—</span>'}</td>
       <td class="num">${leads}</td>
-      <td class="num">${conversas > 0 ? conversas : '<span class="dash">—</span>'}</td>
-      <td class="num" style="${dif > 0 ? 'color:#0e6a8a;font-weight:700;' : ''}">${dif > 0 ? '+'+dif : dif !== 0 ? dif : '<span class="dash">—</span>'}</td>
       <td class="cpl">${cpl != null ? fmtBRL(cpl) : '<span class="dash">—</span>'}</td>
       <td class="cac">${cpv != null ? fmtBRL(cpv) : '<span class="dash">—</span>'}</td>
     `;
@@ -976,13 +971,10 @@ function buildCampanha(campData, cityData) {
 
   const totCPL = tInv > 0 && tL > 0 ? tInv / tL : null;
   const totCPV = tInv > 0 && tV > 0 ? tInv / tV : null;
-  const totDif = tConv - tL;
   document.getElementById('tfoot-campanha').innerHTML = `<tr>
     <td>Total</td>
     <td class="invest">${fmtBRL(tInv)}</td>
     <td class="num">${tL}</td>
-    <td class="num">${tConv}</td>
-    <td class="num">${totDif > 0 ? '+'+totDif : totDif}</td>
     <td class="cpl">${totCPL != null ? fmtBRL(totCPL) : '—'}</td>
     <td class="cac">${totCPV != null ? fmtBRL(totCPV) : '—'}</td>
   </tr>`;
