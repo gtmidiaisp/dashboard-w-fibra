@@ -152,7 +152,7 @@ body {
   letter-spacing: .08em; color: var(--muted); margin-bottom: 14px;
 }
 .status-split { display: flex; align-items: flex-start; gap: 20px; }
-.status-table-wrap { flex: 1; overflow-x: auto; }
+.status-table-wrap { overflow-x: auto; }
 .status-table-wrap table { width: 100%; font-size: 12px; border-collapse: collapse; }
 .status-table-wrap th {
   text-align: left; padding: 5px 8px; font-weight: 700; font-size: 11px;
@@ -341,9 +341,9 @@ tfoot td.cpl, tfoot td.cac, tfoot td.num { text-align: right; color: #fff; }
     <div class="charts-row">
       <div class="chart-card full">
         <h3>Distribuição por status</h3>
-        <div style="display:flex;gap:20px;align-items:flex-start;">
-          <div id="status-detail" class="status-table-wrap" style="width:240px;flex-shrink:0;max-height:340px;overflow-y:auto;"></div>
-          <div style="flex:1;"><div id="status-funnel" class="funnel-wrap"></div></div>
+        <div style="display:flex;gap:24px;align-items:flex-start;">
+          <div id="status-detail" class="status-table-wrap" style="width:220px;min-width:220px;flex-shrink:0;max-height:340px;overflow-y:auto;"></div>
+          <div style="flex:1;min-width:0;"><div id="status-funnel"></div></div>
         </div>
       </div>
     </div>
@@ -839,7 +839,7 @@ function buildResumo(summary, dayData) {
   if (vendasGrp) ordered.push(vendasGrp);
 
   const funnelEl = document.getElementById('status-funnel');
-  const SVG_W = 560, SH = 54, GAP = 3;
+  const SVG_W = 560, SH = 38, GAP = 2;
   const n = ordered.length;
   const minW = SVG_W * 0.18;
 
