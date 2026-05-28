@@ -346,6 +346,8 @@ tfoot td.invest, tfoot td.cpl, tfoot td.cac, tfoot td.num { text-align: right; c
             <th>Data</th>
             <th class="num invest">Investimento</th>
             <th class="num">Leads</th>
+            <th class="num">Conversas</th>
+            <th class="num">Diferença</th>
             <th class="num cpl">CPL</th>
             <th class="num">Vendas</th>
             <th class="num cac">CPV</th>
@@ -353,7 +355,6 @@ tfoot td.invest, tfoot td.cpl, tfoot td.cac, tfoot td.num { text-align: right; c
             <th class="num">% Sem Viab.</th>
             <th class="num">% Sem Resp.</th>
             <th class="num">% Outros</th>
-            <th class="num">Conversas</th>
           </tr>
         </thead>
         <tbody id="tbody-diaria"></tbody>
@@ -370,10 +371,14 @@ tfoot td.invest, tfoot td.cpl, tfoot td.cac, tfoot td.num { text-align: right; c
         <thead>
           <tr>
             <th>Camp.</th>
-            <th class="num invest">Investimento</th>
+            <th class="num invest">Valor investido</th>
             <th class="num">Leads</th>
-            <th class="num cpl">CPL</th>
+            <th class="num">Vendas</th>
             <th class="num cac">CPV</th>
+            <th class="num">% Conv.</th>
+            <th class="num">% Sem Viab.</th>
+            <th class="num">% Sem Resp.</th>
+            <th class="num">% Outros</th>
           </tr>
         </thead>
         <tbody id="tbody-campanha"></tbody>
@@ -670,20 +675,23 @@ function calcByDay(leads, gastos) {
 function calcByCamp(leads, gastos) {
   const camps = {};
   const ensure = (num) => {
-    if (!camps[num]) camps[num] = { num, nome:'', leads:0, vendas:0, investimento:0, conversas:0 };
+    if (!camps[num]) camps[num] = { num, leads:0, vendas:0, semCob:0, semResp:0, outros:0, investimento:0 };
   };
   for (const r of leads) {
     if (!r.campanha) continue;
     ensure(r.campanha);
     camps[r.campanha].leads++;
-    if (r.isVenda) camps[r.campanha].vendas++;
+    const cat = catStatus(r.status);
+    if      (cat === 'vendas')        camps[r.campanha].vendas++;
+    else if (cat === 'sem_cobertura') camps[r.campanha].semCob++;
+    else if (cat === 'sem_resposta')  camps[r.campanha].semResp++;
+    else if (cat !== 'em_aberto' && cat !== 'sem_interesse') camps[r.campanha].outros++;
+    else                               camps[r.campanha].outros++;
   }
   for (const g of gastos) {
     if (!g.campNum) continue;
     ensure(g.campNum);
     camps[g.campNum].investimento += g.amount;
-    camps[g.campNum].conversas    += g.conversas;
-    if (!camps[g.campNum].nome) camps[g.campNum].nome = extractCampShort(g.campName);
   }
   return Object.values(camps).sort((a,b) => a.num - b.num);
 }
@@ -924,12 +932,15 @@ function buildDiaria(dayData) {
     tInv  += investimento; tConv += conversas;
     const cpl = investimento > 0 && leads  > 0 ? investimento / leads  : null;
     const cpv = investimento > 0 && vendas > 0 ? investimento / vendas : null;
+    const dif = conversas - leads;
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td class="dow">${getDow(date)}</td>
       <td style="font-weight:600;">${displayDate(date)}</td>
       <td class="invest">${investimento > 0 ? fmtBRL(investimento) : '<span class="dash">—</span>'}</td>
       <td class="num">${leads}</td>
+      <td class="num">${conversas > 0 ? conversas : '<span class="dash">—</span>'}</td>
+      <td class="num" style="${dif > 0 ? 'color:#0e6a8a;font-weight:700;' : 'color:var(--muted)'}">${leads > 0 || conversas > 0 ? (dif > 0 ? '+'+dif : dif) : '<span class="dash">—</span>'}</td>
       <td class="cpl">${cpl != null ? fmtBRL(cpl) : '<span class="dash">—</span>'}</td>
       <td class="num" style="font-weight:700;color:var(--teal)">${vendas}</td>
       <td class="cac">${cpv != null ? fmtBRL(cpv) : '<span class="dash">—</span>'}</td>
@@ -937,18 +948,20 @@ function buildDiaria(dayData) {
       <td class="num">${pctChipGray(pct(semCob, leads))}</td>
       <td class="num">${pctChipGray(pct(semResp, leads))}</td>
       <td class="num">${pctChipGray(pct(outros_, leads))}</td>
-      <td class="num">${conversas > 0 ? conversas : '<span class="dash">—</span>'}</td>
     `;
     tbody.appendChild(tr);
   }
 
   const totCPL = tInv > 0 && tL > 0 ? tInv / tL : null;
   const totCPV = tInv > 0 && tV > 0 ? tInv / tV : null;
+  const totDif = tConv - tL;
   const p = (v) => tL > 0 ? (v/tL*100).toFixed(1)+'%' : '—';
   document.getElementById('tfoot-diaria').innerHTML = `<tr>
     <td colspan="2">Total do período</td>
     <td class="invest">${fmtBRL(tInv)}</td>
     <td class="num">${tL}</td>
+    <td class="num">${tConv}</td>
+    <td class="num">${totDif > 0 ? '+'+totDif : totDif}</td>
     <td class="cpl">${totCPL != null ? fmtBRL(totCPL) : '—'}</td>
     <td class="num">${tV}</td>
     <td class="cac">${totCPV != null ? fmtBRL(totCPV) : '—'}</td>
@@ -956,7 +969,6 @@ function buildDiaria(dayData) {
     <td class="num">${p(tCob)}</td>
     <td class="num">${p(tResp)}</td>
     <td class="num">${p(tOut)}</td>
-    <td class="num">${tConv}</td>
   </tr>`;
 }
 
@@ -966,30 +978,39 @@ function buildCampanha(campData, cityData) {
   tbody.innerHTML = '';
   let tL=0, tV=0, tInv=0, tConv=0;
 
+  let tCob=0, tResp=0, tOut=0;
   for (const c of campData) {
-    const { leads, vendas, investimento } = c;
+    const { leads, vendas, semCob, semResp, outros, investimento } = c;
     tL += leads; tV += vendas; tInv += investimento;
-    const cpl = investimento > 0 && leads  > 0 ? investimento / leads  : null;
+    tCob += semCob; tResp += semResp; tOut += outros;
     const cpv = investimento > 0 && vendas > 0 ? investimento / vendas : null;
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td style="font-weight:700;color:var(--teal);">[${String(c.num).padStart(2,'0')}]</td>
       <td class="invest">${investimento > 0 ? fmtBRL(investimento) : '<span class="dash">—</span>'}</td>
       <td class="num">${leads}</td>
-      <td class="cpl">${cpl != null ? fmtBRL(cpl) : '<span class="dash">—</span>'}</td>
+      <td class="num" style="font-weight:700;color:var(--teal)">${vendas}</td>
       <td class="cac">${cpv != null ? fmtBRL(cpv) : '<span class="dash">—</span>'}</td>
+      <td class="num">${chipHtml(pct(vendas, leads))}</td>
+      <td class="num">${pctChipGray(pct(semCob, leads))}</td>
+      <td class="num">${pctChipGray(pct(semResp, leads))}</td>
+      <td class="num">${pctChipGray(pct(outros, leads))}</td>
     `;
     tbody.appendChild(tr);
   }
 
-  const totCPL = tInv > 0 && tL > 0 ? tInv / tL : null;
   const totCPV = tInv > 0 && tV > 0 ? tInv / tV : null;
+  const p = (v) => tL > 0 ? (v/tL*100).toFixed(1)+'%' : '—';
   document.getElementById('tfoot-campanha').innerHTML = `<tr>
     <td>Total</td>
     <td class="invest">${fmtBRL(tInv)}</td>
     <td class="num">${tL}</td>
-    <td class="cpl">${totCPL != null ? fmtBRL(totCPL) : '—'}</td>
+    <td class="num">${tV}</td>
     <td class="cac">${totCPV != null ? fmtBRL(totCPV) : '—'}</td>
+    <td class="num">${pct(tV,tL).toFixed(1)}%</td>
+    <td class="num">${p(tCob)}</td>
+    <td class="num">${p(tResp)}</td>
+    <td class="num">${p(tOut)}</td>
   </tr>`;
 
   /* City cards */
